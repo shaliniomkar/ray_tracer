@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <random>
+#include <chrono>
 
 #include "hittable.h"
 #include "material.h"
@@ -28,6 +29,8 @@ class camera {
             std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
             std::vector<color> framebuffer(image_width * image_height);
+
+            auto start = std::chrono::high_resolution_clock::now();
 
             int num_threads = std::thread::hardware_concurrency();
             int remainder = image_height % num_threads;
@@ -68,7 +71,10 @@ class camera {
                 }
             }
 
-            std::clog << "\rDone.                  \n";
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+            std::clog << "Render time: " << duration.count() << "ms\n";
         }
 
     private:
