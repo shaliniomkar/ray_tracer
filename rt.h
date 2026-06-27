@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <random>
 
 // C++ std usings
 
@@ -31,6 +32,16 @@ inline double random_double() {
 inline double random_double(double min, double max) {
     // returns a random real in [min,max)
     return min + (max-min)*random_double();
+}
+
+inline double random_double(std::mt19937& rng) { 
+    std::uniform_real_distribution<double> dist(0.0, 1.0); 
+    return dist(rng); 
+}
+
+inline double random_double(std::mt19937& rng, double min, double max) {
+    // returns a random real in [min,max)
+    return min + (max-min)*random_double(rng);
 }
 
 // common headers

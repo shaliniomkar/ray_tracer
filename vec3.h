@@ -2,6 +2,7 @@
 #define VEC3_H
 
 #include "rt.h"
+#include <random>
 
 class vec3 {
     public:
@@ -53,9 +54,17 @@ class vec3 {
         static vec3 random() {
             return vec3(random_double(), random_double(), random_double());
         }
+        
+        static vec3 random(std::mt19937& rng) {
+            return vec3(random_double(rng), random_double(rng), random_double(rng));
+        }
 
         static vec3 random(double min, double max) {
             return vec3(random_double(min,max), random_double(min,max), random_double(min,max));
+        }
+
+        static vec3 random(std::mt19937& rng, double min, double max) {
+            return vec3(random_double(rng,min,max), random_double(rng,min,max), random_double(rng,min,max));
         }
 };
 
@@ -117,9 +126,27 @@ inline vec3 random_in_unit_disk() {
     }
 }
 
+inline vec3 random_in_unit_disk(std::mt19937& rng) {
+    while (true) {
+        auto p = vec3(random_double(rng, -1,1), random_double(rng, -1,1), 0);
+        if (p.length_squared() < 1)
+            return p;
+    }
+}
+
 inline vec3 random_unit_vector() {
     while (true) {
         auto p = vec3::random(-1,1);
+        auto lensq = p.length_squared();
+        if (1e-160 < lensq && lensq <= 1) {
+            return p / sqrt(lensq);
+        }
+    }
+}
+
+inline vec3 random_unit_vector(std::mt19937& rng) {
+    while (true) {
+        auto p = vec3::random(rng, -1,1);
         auto lensq = p.length_squared();
         if (1e-160 < lensq && lensq <= 1) {
             return p / sqrt(lensq);

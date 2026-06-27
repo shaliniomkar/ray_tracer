@@ -2,13 +2,19 @@
 #define MATERIAL_H
 
 #include "hittable.h"
+#include <random>
 
 class material {
     public:
         virtual ~material() = default;
 
+        virtual bool scatter(const ray& r_in, const hit_record& rec,
+                            color& attenuation, ray& scattered) const {
+            return false;
+        }
+
         virtual bool scatter (
-            const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
+            std::mt19937& rng, const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered
         ) const {
             return false;
         }
@@ -20,6 +26,18 @@ class lambertian : public material {
 
         bool scatter(const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
             auto scatter_direction = rec.normal + random_unit_vector();
+            
+            // catch degenerate scatter direction
+            if (scatter_direction.near_zero())
+                scatter_direction = rec.normal;
+            
+            scattered = ray(rec.p, scatter_direction);
+            attenuation = albedo;
+            return true;
+        }
+
+        bool scatter(std::mt19937& rng, const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
+            auto scatter_direction = rec.normal + random_unit_vector(rng);
             
             // catch degenerate scatter direction
             if (scatter_direction.near_zero())
@@ -46,6 +64,14 @@ class metal : public material {
             return (dot(scattered.direction(), rec.normal) > 0);
         }
 
+        bool scatter(std::mt19937& rng, const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
+            vec3 reflected = reflect(r_in.direction(), rec.normal);
+            reflected = unit_vector(reflected) + (fuzz * random_unit_vector(rng));
+            scattered = ray(rec.p, reflected);
+            attenuation = albedo;
+            return (dot(scattered.direction(), rec.normal) > 0);
+        }
+
     private:
         color albedo;
         double fuzz;
@@ -67,6 +93,27 @@ class dielectric : public material {
             vec3 direction;
 
             if (cannot_refract || reflectance(cos_theta, ri) > random_double())
+                direction = reflect(unit_direction, rec.normal);
+            else
+                direction = refract(unit_direction, rec.normal, ri);
+
+            scattered = ray(rec.p, direction);
+
+            return true;
+        }
+
+        bool scatter(std::mt19937& rng, const ray& r_in, const hit_record& rec, color& attenuation, ray& scattered) const override {
+            attenuation = color(1.0,1.0,1.0);
+            double ri = rec.front_face ? (1.0/refraction_index) : refraction_index;
+
+            vec3 unit_direction = unit_vector(r_in.direction());
+            double cos_theta = std::fmin(dot(-unit_direction, rec.normal), 1.0);
+            double sin_theta = std::sqrt(1.0 - cos_theta*cos_theta);
+            
+            bool cannot_refract = ri * sin_theta > 1.0;
+            vec3 direction;
+
+            if (cannot_refract || reflectance(cos_theta, ri) > random_double(rng))
                 direction = reflect(unit_direction, rec.normal);
             else
                 direction = refract(unit_direction, rec.normal, ri);
